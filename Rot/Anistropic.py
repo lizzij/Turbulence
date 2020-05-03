@@ -1,26 +1,29 @@
+import matplotlib.pyplot as plt
+import torch.nn as nn
 import os
+os.chdir("/global/cscratch1/sd/rwang2/Equivariance/Anisotropic")
 import torch
 import torch.nn as nn
+import torch.optim as optim
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 import numpy as np
 import time
+import pandas as pd
 from torch.utils import data
-import warnings
-from .train import train_epoch, eval_epoch, test_epoch, Dataset
-
-warnings.filterwarnings("ignore")
+from torch.autograd import Variable
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-os.chdir("/global/cscratch1/sd/rwang2/Equivariance/Anisotropic")
+import warnings
+warnings.filterwarnings("ignore")
+from train import train_epoch, eval_epoch, test_epoch, Dataset
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,5,6,7"
 basis = torch.load("kernel_basis.pt")
 
-
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
-
-
+    
 class Ani_layer(nn.Module):
     def __init__(self, input_channels, output_channels, kernel_size, activation = False):
         super(Ani_layer, self).__init__()
@@ -49,18 +52,18 @@ class Ani_layer(nn.Module):
         self.initial_kernel = torch.einsum("abcd, cdefgh -> abefgh",  (self.params, self.basis)).clone()
         
     def init_params(self):
-        return torch.randn(self.output_channels, self.input_channels, self.num_weights, 4)
+        return torch.randn((self.output_channels, self.input_channels, self.num_weights, 4)
     
     def get_kernel(self, params, basis):
-        # Compute Kernel: Kernel shape (output_channels, input_channels, kernel_size, kernel_size, 2, 2)
+        # Compute Kernel: Kernel shape (output_channels, input_channels, kernel_size, kernel_size, 2, 2) 
         kernel = torch.einsum("abcd, cdefgh -> abefgh",  (self.params, self.basis.to(device)))
-
+        
         # Reshape
-        kernel = kernel.transpose(-2, -3).transpose(-3, -4).transpose(-4, -5)
+        kernel = kernel.transpose(-2, -3).transpose(-3, -4).transpose(-4, -5)       
         kernel = kernel.reshape(kernel.shape[0]*2,  kernel.shape[2], self.kernel_size, self.kernel_size, 2)
         kernel = kernel.transpose(-1, -2).transpose(-2, -3)
         kernel = kernel.reshape(kernel.shape[0], kernel.shape[1]*2, self.kernel_size, self.kernel_size)
-
+        
         return kernel
     
     def forward(self, xx):
@@ -94,23 +97,21 @@ class Resblock(nn.Module):
         else:
             out = self.layer2(out)
         return out
-
-
+    
 class rot_cnn(nn.Module):
     def __init__(self, input_channels, output_channels, kernel_size, activation):
         super(rot_cnn, self).__init__()
-        layers = [Ani_layer(input_channels, 64, kernel_size, activation=activation)]
-        layers += [Resblock(64, 64, kernel_size, activation=activation, skip=True) for i in range(3)]
-        layers += [Resblock(64, 128, kernel_size, activation=activation, skip=False)] + [Resblock(128, 128, kernel_size, activation=activation, skip=True) for i in range(3)]
-        layers += [Resblock(128, 256, kernel_size, activation=activation, skip=False)] + [Resblock(256, 256, kernel_size, activation=activation, skip=True) for i in range(5)]
-        layers += [Resblock(256, 512, kernel_size, activation=activation, skip=False)] + [Resblock(512, 512, kernel_size, activation=activation, skip=True) for i in range(2)]
+        layers = [Ani_layer(input_channels, 64, kernel_size, activation = activation)] 
+        layers += [Resblock(64, 64, kernel_size, activation = activation, skip = True) for i in range(3)] 
+        layers += [Resblock(64, 128, kernel_size, activation = activation, skip = False)] + [Resblock(128, 128, kernel_size, activation = activation, skip = True) for i in range(3)] 
+        layers += [Resblock(128, 256, kernel_size, activation = activation, skip = False)] + [Resblock(256, 256, kernel_size, activation = activation, skip = True) for i in range(5)] 
+        layers += [Resblock(256, 512, kernel_size, activation = activation, skip = False)] + [Resblock(512, 512, kernel_size, activation = activation, skip = True) for i in range(2)] 
         layers += [Ani_layer(512, 1, kernel_size, False)]
         self.layers = nn.Sequential(*layers)
 
     def forward(self, xx):
         return self.layers(xx)     
-
-
+    
 train_direc = "/global/cscratch1/sd/rwang2/TF-net/Data/data_64/sample_"
 test_direc = "/global/cscratch1/sd/rwang2/TF-net/Data/data_64/sample_"
 kernel_size = 3
@@ -124,15 +125,15 @@ test_indices = list(range(7700, 9470))
 
 train_set = Dataset(train_indices, input_length, 40, output_length, train_direc, True)
 valid_set = Dataset(valid_indices, input_length, 40, 6, train_direc, True)
-train_loader = data.DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=8)
-valid_loader = data.DataLoader(valid_set, batch_size=batch_size, shuffle=False, num_workers=8)
+train_loader = data.DataLoader(train_set, batch_size = batch_size, shuffle = True, num_workers = 8)
+valid_loader = data.DataLoader(valid_set, batch_size = batch_size, shuffle = False, num_workers = 8)
 
 print("Initializing...")
-model = nn.DataParallel(rot_cnn(input_channels=input_length, output_channels=1, kernel_size=kernel_size, activation="sin").to(device))
+model = nn.DataParallel(rot_cnn(input_channels = input_length, output_channels = 1, kernel_size = kernel_size, activation = "sin").to(device))
 print("Done")
 
 optimizer = torch.optim.Adam(model.parameters(), learning_rate,betas=(0.9, 0.999), weight_decay=4e-4)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size= 1, gamma=0.9)
 loss_fun = torch.nn.MSELoss()
 
 train_mse = []
@@ -155,8 +156,8 @@ for i in range(30):
         best_model = model
         torch.save(model, "model.pth")
     end = time.time()
-    if len(train_mse) > 30 and np.mean(valid_mse[-5:]) >= np.mean(valid_mse[-10:-5]):
-        break
+    if (len(train_mse) > 30 and np.mean(valid_mse[-5:]) >= np.mean(valid_mse[-10:-5])):
+            break
     print(train_mse[-1], valid_mse[-1], round((end-start)/60,5), format(get_lr(optimizer), "5.2e"))
 
 print("*******", input_length, min_mse, "*******")
@@ -172,8 +173,8 @@ torch.save({"preds": preds[:7],
             "trues": trues[:7],
             "loss_curve": loss_curve,
             "train_loss": train_mse,
-            "valid_loss": valid_mse},
-           "results.pt")
+            "valid_loss": valid_mse}, 
+            "results.pt")
 
 """
 class Ani_layer(nn.Module):
