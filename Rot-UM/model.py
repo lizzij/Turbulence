@@ -6,11 +6,10 @@ import numpy as np
 import time
 from torch.utils import data
 import warnings
-from .train import train_epoch, eval_epoch, test_epoch, Dataset
+from train import train_epoch, eval_epoch, test_epoch, Dataset
 
 warnings.filterwarnings("ignore")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-os.chdir("/global/cscratch1/sd/rwang2/Equivariance/Anisotropic")
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,5,6,7"
 basis = torch.load("kernel_basis.pt")
@@ -104,7 +103,7 @@ class Ani_layer(nn.Module):
         
         # Activation Function
         if self.activation:
-#             print("***")
+            print("***")
             if self.activation == "sin":
                 norm = torch.sqrt(out[:,:,0,:,:]**2 + out[:,:,1,:,:]**2).unsqueeze(2)
                 out = out*torch.sin(norm)**2/norm
@@ -140,16 +139,22 @@ class rot_um_cnn(nn.Module):
         return self.layers(xx)
 
 
-train_direc = "/global/cscratch1/sd/rwang2/TF-net/Data/data_64/sample_"
-test_direc = "/global/cscratch1/sd/rwang2/TF-net/Data/data_64/sample_"
+train_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/data_64/sample_"
+test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_64/sample_"
 kernel_size = 3
+num_layers = 2
+hidden_dim = 128
 learning_rate = 1e-05
 output_length = 3
 batch_size = 8
 input_length = 20
-train_indices = list(range(0, 6000))
-valid_indices = list(range(6000, 7700))
-test_indices = list(range(7700, 9470))
+# train_indices = list(range(0, 6000))
+# valid_indices = list(range(6000, 8000))
+# test_indices = list(range(8000, 9870))
+train_indices = list(range(0, 6))
+valid_indices = list(range(6, 8))
+test_indices = list(range(8, 10))
+
 
 train_set = Dataset(train_indices, input_length, 40, output_length, train_direc, True)
 valid_set = Dataset(valid_indices, input_length, 40, 6, train_direc, True)
@@ -157,7 +162,7 @@ train_loader = data.DataLoader(train_set, batch_size=batch_size, shuffle=True, n
 valid_loader = data.DataLoader(valid_set, batch_size=batch_size, shuffle=False, num_workers=8)
 
 print("Initializing...")
-model = nn.DataParallel(rot_cnn(input_channels=input_length, output_channels=1, kernel_size=kernel_size, activation="sin").to(device))
+model = rot_um_cnn(activation = "relu", input_channels = input_length, hidden_dim = hidden_dim, num_layers = num_layers, output_channels = 1, kernel_size = kernel_size)
 print("Done")
 
 optimizer = torch.optim.Adam(model.parameters(), learning_rate,betas=(0.9, 0.999), weight_decay=4e-4)
