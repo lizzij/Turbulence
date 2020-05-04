@@ -43,20 +43,20 @@ class mean_layer(nn.Module):
         return out
     
     def forward(self, xx, add_mean = True):
-        print('xx', xx.shape)
+#         print('xx', xx.shape)
         xx = self.unfold(xx)
-        print('xx unfold', xx.shape)
+#         print('xx unfold', xx.shape)
         xx, avgs = self.subtract_mean(xx)
-        print('xx subtract_mean', xx.shape)
-        print('avgs subtract_mean', avgs.shape)
+#         print('xx subtract_mean', xx.shape)
+#         print('avgs subtract_mean', avgs.shape)
         out = self.conv2d(xx)
-        print('out conv2d', out.shape)
+#         print('out conv2d', out.shape)
         if self.activation:
             out = self.batchnorm(out)
             out = F.leaky_relu(out)
         if add_mean:
             out = self.add_mean(out, avgs)
-            print('out add_mean', out.shape)
+#             print('out add_mean', out.shape)
         return out
 
 
