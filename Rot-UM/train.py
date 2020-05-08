@@ -120,5 +120,9 @@ def test_epoch(test_loader, model, loss_function):
             trues = np.concatenate(trues, axis=0)
         except:
             print("Can't concatenate")
+            for pred in preds:
+                print(pred.shape)
+            for true in trues:
+                print(true.shape)
         loss_curve = np.sqrt(np.mean(loss_curve, axis=0))
     return valid_mse, preds, trues, loss_curve

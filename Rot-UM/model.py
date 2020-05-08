@@ -10,8 +10,8 @@ from train import train_epoch, eval_epoch, test_epoch, Dataset
 
 warnings.filterwarnings("ignore")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,5,6,7"
+# os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,5,6,7"
 basis = torch.load("kernel_basis.pt")
 
 
@@ -140,20 +140,33 @@ class rot_um_cnn(nn.Module):
 
 
 train_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/data_64/sample_"
-test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_64/sample_"
+test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/data_64/sample_"
 kernel_size = 3
 num_layers = 2
 hidden_dim = 128
 learning_rate = 1e-05
 output_length = 3
-batch_size = 8
+batch_size = 1
 input_length = 20
 # train_indices = list(range(0, 6000))
 # valid_indices = list(range(6000, 8000))
 # test_indices = list(range(8000, 9870))
+
+# train_indices = list(range(0, 600))
+# valid_indices = list(range(600, 800))
+# test_indices = list(range(8000, 8200))
+
+# train_indices = list(range(0, 60))
+# valid_indices = list(range(60, 80))
+# test_indices = list(range(8000, 8020))
+
 train_indices = list(range(0, 6))
 valid_indices = list(range(6, 8))
-test_indices = list(range(8, 10))
+test_indices = list(range(8000, 8002))
+
+# train_indices = list(range(8000, 8006))
+# valid_indices = list(range(8006, 8008))
+# test_indices = list(range(8008, 8010))
 
 
 train_set = Dataset(train_indices, input_length, 40, output_length, train_direc, True)
@@ -162,7 +175,7 @@ train_loader = data.DataLoader(train_set, batch_size=batch_size, shuffle=True, n
 valid_loader = data.DataLoader(valid_set, batch_size=batch_size, shuffle=False, num_workers=8)
 
 print("Initializing...")
-model = rot_um_cnn(activation = "relu", input_channels = input_length, hidden_dim = hidden_dim, num_layers = num_layers, output_channels = 1, kernel_size = kernel_size)
+model = rot_um_cnn(activation = "relu", input_channels = input_length, hidden_dim = hidden_dim, num_layers = num_layers, output_channels = 1, kernel_size = kernel_size).to(device)
 print("Done")
 
 optimizer = torch.optim.Adam(model.parameters(), learning_rate,betas=(0.9, 0.999), weight_decay=4e-4)
