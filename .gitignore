@@ -1,5 +1,8 @@
 # Data
 TF-net/
+*.pt
+*.pth
+*.gif
 
 docs/equations/*.aux
 docs/equations/*.log

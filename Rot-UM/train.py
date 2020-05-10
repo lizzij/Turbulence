@@ -101,7 +101,7 @@ def test_epoch(test_loader, model, loss_function):
             loss = 0
             ims = []
             if yy.shape[-1] == 92:
-                yy = yy[:, :, :, 2:-2, 2:-2]
+                yy = yy[:, :, :, 14:-14, 14:-14]
             for y in yy.transpose(0, 1):
                 im = model(xx)
                 xx = torch.cat([xx[:, 2:], im], 1)
@@ -113,6 +113,7 @@ def test_epoch(test_loader, model, loss_function):
             ims = np.concatenate(ims, axis=1)
             preds.append(ims)
             trues.append(yy.cpu().data.numpy())
+            valid_mse.append(loss.item() / yy.shape[1])
 
         loss_curve = np.array(loss_curve).reshape(-1, yy.shape[1])
         try:
@@ -124,5 +125,6 @@ def test_epoch(test_loader, model, loss_function):
                 print(pred.shape)
             for true in trues:
                 print(true.shape)
+        valid_mse = round(np.mean(valid_mse), 5)
         loss_curve = np.sqrt(np.mean(loss_curve, axis=0))
     return valid_mse, preds, trues, loss_curve

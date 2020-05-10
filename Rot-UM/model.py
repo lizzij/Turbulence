@@ -148,9 +148,9 @@ learning_rate = 1e-05
 output_length = 3
 batch_size = 1
 input_length = 20
-# train_indices = list(range(0, 6000))
-# valid_indices = list(range(6000, 8000))
-# test_indices = list(range(8000, 9870))
+train_indices = list(range(0, 6000))
+valid_indices = list(range(6000, 8000))
+test_indices = list(range(8000, 9870))
 
 # train_indices = list(range(0, 600))
 # valid_indices = list(range(600, 800))
@@ -160,9 +160,9 @@ input_length = 20
 # valid_indices = list(range(60, 80))
 # test_indices = list(range(8000, 8020))
 
-train_indices = list(range(0, 6))
-valid_indices = list(range(6, 8))
-test_indices = list(range(8000, 8002))
+# train_indices = list(range(0, 6))
+# valid_indices = list(range(6, 8))
+# test_indices = list(range(8000, 8002))
 
 # train_indices = list(range(8000, 8006))
 # valid_indices = list(range(8006, 8008))

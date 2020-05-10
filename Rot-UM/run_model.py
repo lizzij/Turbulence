@@ -22,9 +22,9 @@ min_mse = 1
 output_length = 4
 batch_size = 1
 input_length = 25
-# train_indices = list(range(0, 6000))
-# valid_indices = list(range(6000, 8000))
-# test_indices = list(range(8000, 9870))
+train_indices = list(range(0, 6000))
+valid_indices = list(range(6000, 8000))
+test_indices = list(range(8000, 9870))
 
 # train_indices = list(range(0, 600))
 # valid_indices = list(range(600, 800))
@@ -34,9 +34,9 @@ input_length = 25
 # valid_indices = list(range(60, 80))
 # test_indices = list(range(8000, 8020))
 
-train_indices = list(range(0, 6))
-valid_indices = list(range(6, 8))
-test_indices = list(range(8000, 8002))
+# train_indices = list(range(0, 6))
+# valid_indices = list(range(6, 8))
+# test_indices = list(range(8000, 8002))
 
 # train_indices = list(range(8000, 8006))
 # valid_indices = list(range(8006, 8008))
@@ -60,25 +60,26 @@ train_mse = []
 valid_mse = []
 test_mse = []
 
-for i in range(100):
-    start = time.time()
-    scheduler.step()
+# for i in range(100):
+#     start = time.time()
+#     scheduler.step()
 
-    model.train()
-    train_mse.append(train_epoch(train_loader, model, optimizer, loss_fun))
-    model.eval()
-    mse, _, _ = eval_epoch(valid_loader, model, loss_fun)
-    valid_mse.append(mse)
+#     model.train()
+#     train_mse.append(train_epoch(train_loader, model, optimizer, loss_fun))
+#     model.eval()
+#     mse, _, _ = eval_epoch(valid_loader, model, loss_fun)
+#     valid_mse.append(mse)
 
-    if valid_mse[-1] < min_mse:
-        min_mse = valid_mse[-1] 
-        best_model = model
-        torch.save(model, "Rot-UM-CNN"+idx+".pth")
-    end = time.time()
-    if (len(train_mse) > 50 and np.mean(valid_mse[-5:]) >= np.mean(valid_mse[-10:-5])):
-            break
-    print(i+1,train_mse[-1], valid_mse[-1], round((end-start)/60,5), format(get_lr(optimizer), "5.2e"), idx)
+#     if valid_mse[-1] < min_mse:
+#         min_mse = valid_mse[-1] 
+#         best_model = model
+#         torch.save(model, "Rot-UM-CNN"+idx+".pth")
+#     end = time.time()
+#     if (len(train_mse) > 50 and np.mean(valid_mse[-5:]) >= np.mean(valid_mse[-10:-5])):
+#             break
+#     print(i+1,train_mse[-1], valid_mse[-1], round((end-start)/60,5), format(get_lr(optimizer), "5.2e"), idx)
 
+model.load_state_dict(torch.load("Rot-UM-CNN1.pth"))
 
 print('\n-------------test_mse-------------')
 

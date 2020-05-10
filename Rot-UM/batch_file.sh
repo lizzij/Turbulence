@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --gres=gpu:8
 #SBATCH -C gpu
-#SBATCH --time=04:00:00
+#SBATCH --time=08:00:00
 #SBATCH -N 1
 #SBATCH -A m1759
 #SBATCH -q special
