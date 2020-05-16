@@ -1,7 +1,12 @@
 # Data
 TF-net/
+
+# Results
+*.out
 *.pt
 *.pth
+
+# Images
 *.gif
 
 docs/equations/*.aux
