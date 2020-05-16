@@ -100,8 +100,8 @@ def test_epoch(test_loader, model, loss_function):
             yy = yy.to(device)
             loss = 0
             ims = []
-            if yy.shape[-1] == 92:
-                yy = yy[:, :, :, 14:-14, 14:-14]
+#             if yy.shape[-1] == 92:
+#                 yy = yy[:, :, :, 14:-14, 14:-14]
             for y in yy.transpose(0, 1):
                 im = model(xx)
                 xx = torch.cat([xx[:, 2:], im], 1)

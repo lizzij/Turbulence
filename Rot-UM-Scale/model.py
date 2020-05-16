@@ -139,6 +139,7 @@ class rot_um_cnn(nn.Module):
         return self.layers(xx)
 
 
+"""
 train_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/data_64/sample_"
 test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/data_64/sample_"
 kernel_size = 3
@@ -221,3 +222,4 @@ torch.save({"preds": preds[:7],
             "train_loss": train_mse,
             "valid_loss": valid_mse},
            "results.pt")
+"""

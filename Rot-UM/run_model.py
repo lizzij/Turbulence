@@ -12,7 +12,7 @@ from train import train_epoch, eval_epoch, test_epoch, Dataset, get_lr
 # os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,5,6,7"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-train_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/data_64/sample_"
+train_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_64/sample_"
 idx = str(1)
 num_layers = 2
 kernel_size = 3
@@ -25,22 +25,6 @@ input_length = 25
 train_indices = list(range(0, 6000))
 valid_indices = list(range(6000, 8000))
 test_indices = list(range(8000, 9870))
-
-# train_indices = list(range(0, 600))
-# valid_indices = list(range(600, 800))
-# test_indices = list(range(8000, 8200))
-
-# train_indices = list(range(0, 60))
-# valid_indices = list(range(60, 80))
-# test_indices = list(range(8000, 8020))
-
-# train_indices = list(range(0, 6))
-# valid_indices = list(range(6, 8))
-# test_indices = list(range(8000, 8002))
-
-# train_indices = list(range(8000, 8006))
-# valid_indices = list(range(8006, 8008))
-# test_indices = list(range(8008, 8010))
 
 train_set = Dataset(train_indices, input_length, 40, output_length, train_direc, True)
 valid_set = Dataset(valid_indices, input_length, 40, 6, train_direc, True)
@@ -60,26 +44,29 @@ train_mse = []
 valid_mse = []
 test_mse = []
 
-# for i in range(100):
-#     start = time.time()
-#     scheduler.step()
+# train model
+for i in range(100):
+    start = time.time()
+    scheduler.step()
 
-#     model.train()
-#     train_mse.append(train_epoch(train_loader, model, optimizer, loss_fun))
-#     model.eval()
-#     mse, _, _ = eval_epoch(valid_loader, model, loss_fun)
-#     valid_mse.append(mse)
+    model.train()
+    train_mse.append(train_epoch(train_loader, model, optimizer, loss_fun))
+    model.eval()
+    mse, _, _ = eval_epoch(valid_loader, model, loss_fun)
+    valid_mse.append(mse)
 
-#     if valid_mse[-1] < min_mse:
-#         min_mse = valid_mse[-1] 
-#         best_model = model
-#         torch.save(model, "Rot-UM-CNN"+idx+".pth")
-#     end = time.time()
-#     if (len(train_mse) > 50 and np.mean(valid_mse[-5:]) >= np.mean(valid_mse[-10:-5])):
-#             break
-#     print(i+1,train_mse[-1], valid_mse[-1], round((end-start)/60,5), format(get_lr(optimizer), "5.2e"), idx)
+    if valid_mse[-1] < min_mse:
+        min_mse = valid_mse[-1] 
+        best_model = model
+        torch.save(model, "results/Rot-UM-CNN"+idx+".pth")
+    end = time.time()
+    if (len(train_mse) > 50 and np.mean(valid_mse[-5:]) >= np.mean(valid_mse[-10:-5])):
+            break
+    print(i+1,train_mse[-1], valid_mse[-1], round((end-start)/60,5), format(get_lr(optimizer), "5.2e"), idx)
 
-model.load_state_dict(torch.load("Rot-UM-CNN1.pth"))
+
+# # load from saved
+# best_model = torch.load("Rot-UM-CNN1.pth").to(device)
 
 print('\n-------------test_mse-------------')
 
@@ -95,7 +82,7 @@ torch.save({"preds": preds,
             "trues": trues,
             "test_mse":test_mse,
             "loss_curve": loss_curve}, 
-            "Rot-UM-CNN"+idx+".pt")
+            "results/Rot-UM-CNN"+idx+".pt")
 
 test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/um_64/sample_"
 test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
@@ -106,7 +93,7 @@ torch.save({"preds": preds,
             "trues": trues,
             "test_mse":test_mse,
             "loss_curve": loss_curve}, 
-            "Rot-UM-CNN-UM"+idx+".pt")
+            "results/Rot-UM-CNN-UM"+idx+".pt")
 
 print('Rot-UM-CNN-UM:',test_mse)
 
@@ -119,19 +106,19 @@ torch.save({"preds": preds,
             "trues": trues,
             "test_mse":test_mse,
             "loss_curve": loss_curve}, 
-            "Rot-UM-CNN-Rot"+idx+".pt")
+            "results/Rot-UM-CNN-Rot"+idx+".pt")
 
 print('Rot-UM-CNN-Rot:',test_mse)
 
-# test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_64/sample_"
-# test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
-# test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
-# test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
+test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_64/sample_"
+test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
+test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
+test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
 
-# torch.save({"preds": preds,
-#             "trues": trues,
-#             "test_mse":test_mse,
-#             "loss_curve": loss_curve}, 
-#             "Rot-UM-CNN-Org-Rot-UM"+idx+".pt")
+torch.save({"preds": preds,
+            "trues": trues,
+            "test_mse":test_mse,
+            "loss_curve": loss_curve}, 
+            "results/Rot-UM-CNN-Org-Rot-UM"+idx+".pt")
 
-# print('Rot-UM-CNN-Org-Rot-UM:',test_mse)
+print('Rot-UM-CNN-Org-Rot-UM:',test_mse)

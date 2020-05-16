@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "run_model.py", line 9, in <module>
+    from model import rot_um_cnn
+ImportError: cannot import name 'rot_um_cnn'
+srun: error: cgpu10: task 0: Exited with exit code 1
+srun: Terminating job step 620408.0

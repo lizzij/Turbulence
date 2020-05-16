@@ -1,0 +1,35 @@
+Initializing...
+Done
+Traceback (most recent call last):
+  File "run_model.py", line 68, in <module>
+    train_mse.append(train_epoch(train_loader, model, optimizer, loss_fun))
+  File "/global/cscratch1/sd/roseyu/Eliza/Rot-UM-Mag/train.py", line 43, in train_epoch
+    for xx, yy in train_loader:
+  File "/global/homes/r/roseyu/.conda/envs/myenv/lib/python3.6/site-packages/torch/utils/data/dataloader.py", line 345, in __next__
+    data = self._next_data()
+  File "/global/homes/r/roseyu/.conda/envs/myenv/lib/python3.6/site-packages/torch/utils/data/dataloader.py", line 856, in _next_data
+    return self._process_data(data)
+  File "/global/homes/r/roseyu/.conda/envs/myenv/lib/python3.6/site-packages/torch/utils/data/dataloader.py", line 881, in _process_data
+    data.reraise()
+  File "/global/homes/r/roseyu/.conda/envs/myenv/lib/python3.6/site-packages/torch/_utils.py", line 394, in reraise
+    raise self.exc_type(msg)
+FileNotFoundError: Caught FileNotFoundError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/global/homes/r/roseyu/.conda/envs/myenv/lib/python3.6/site-packages/torch/utils/data/_utils/worker.py", line 178, in _worker_loop
+    data = fetcher.fetch(index)
+  File "/global/homes/r/roseyu/.conda/envs/myenv/lib/python3.6/site-packages/torch/utils/data/_utils/fetch.py", line 44, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/global/homes/r/roseyu/.conda/envs/myenv/lib/python3.6/site-packages/torch/utils/data/_utils/fetch.py", line 44, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/global/cscratch1/sd/roseyu/Eliza/Rot-UM-Mag/train.py", line 29, in __getitem__
+    y = torch.load(self.direc + str(ID) + ".pt")[self.mid:(self.mid + self.output_length)]
+  File "/global/homes/r/roseyu/.conda/envs/myenv/lib/python3.6/site-packages/torch/serialization.py", line 525, in load
+    with _open_file_like(f, 'rb') as opened_file:
+  File "/global/homes/r/roseyu/.conda/envs/myenv/lib/python3.6/site-packages/torch/serialization.py", line 212, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+  File "/global/homes/r/roseyu/.conda/envs/myenv/lib/python3.6/site-packages/torch/serialization.py", line 193, in __init__
+    super(_open_file, self).__init__(open(name, mode))
+FileNotFoundError: [Errno 2] No such file or directory: '/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_mag_64/sample_0.pt'
+
+srun: error: cgpu16: task 0: Exited with exit code 1
+srun: Terminating job step 620505.0
