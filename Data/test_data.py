@@ -84,3 +84,34 @@ for i in range(9870):
     rot_um_mag_img = magnitude(img, mag_scalar)
     #break
     torch.save(rot_um_mag_img, "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_mag_64/sample_" + str(i) + ".pt")
+    
+# scale ================================================================================
+def scale(img, factor):
+    scale_img = F.interpolate(img.unsqueeze(0), scale_factor = (1, factor, factor), mode="trilinear", align_corners = True).squeeze(0)
+    return scale_img*(img.max() - img.min())/(scale_img.max() - scale_img.min())/factor
+
+direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/data_64/sample_"
+for i in tqdm(range(9870)):
+    factor = np.random.uniform(0.2, 2)
+    img = torch.load(direc + str(i) + ".pt")
+    scale_img = scale(img, factor)
+    torch.save(scale_img, "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/scale_64/sample_" + str(i) + ".pt")
+
+# scale + Rot + UM =====================================================================
+direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/scale_64/sample_"
+for i in tqdm(range(9870)):
+    scale_img = torch.load(direc + str(i) + ".pt")
+
+    # rotate
+    degree = (15*(i-7000))%360
+    scale_rot_img = torch.cat([rotate(scale_img[j], degree).unsqueeze(0) for j in range(scale_img.shape[0])], dim = 0)
+
+    # UM
+    um_vector = sample_n_within_spherical()
+    scale_rot_um_img = torch.cat([uniform_motion(scale_rot_img, um_vector) for j in range(scale_rot_img.shape[0])], dim = 0)
+
+    # pad
+    target_dim = math.ceil(64 * 2 * np.sqrt(2)) # max dimension after scale by 2, and rot by pi/2
+    padded_scale_rot_um_img = pad_after_scale(scale_rot_um_img, target_dim)
+    
+    torch.save(padded_scale_rot_um_img, "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/scale_rot_um_182/sample_" + str(i) + ".pt")
