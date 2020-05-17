@@ -45,7 +45,7 @@ valid_mse = []
 test_mse = []
 
 # load from saved
-model = torch.load("results/Rot-UM-[data_64]1.pth").to(device)
+model = torch.load("results/Rot-UM-Mag-[rot_um_mag_92]"+idx+".pth").to(device)
 best_model = model
 
 # train model
@@ -62,7 +62,7 @@ for i in range(100):
     if valid_mse[-1] < min_mse:
         min_mse = valid_mse[-1] 
         best_model = model
-        torch.save(model, "results/Rot-UM-[data_64]"+idx+".pth")
+        torch.save(model, "results/Rot-UM-Mag-[rot_um_mag_92]"+idx+".pth")
     end = time.time()
     if (len(train_mse) > 50 and np.mean(valid_mse[-5:]) >= np.mean(valid_mse[-10:-5])):
             break
@@ -80,7 +80,7 @@ torch.save({"preds": preds,
             "trues": trues,
             "test_mse":test_mse,
             "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-data_64]"+idx+".pt")
+            "results/Rot-UM-Mag-[rot_um_mag_92-data_64]"+idx+".pt")
 
 test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/um_64/sample_"
 test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
@@ -90,7 +90,7 @@ torch.save({"preds": preds,
             "trues": trues,
             "test_mse":test_mse,
             "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-um_64]"+idx+".pt")
+            "results/Rot-UM-Mag-[rot_um_mag_92-um_64]"+idx+".pt")
 
 test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_92/sample_"
 test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
@@ -100,7 +100,7 @@ torch.save({"preds": preds,
             "trues": trues,
             "test_mse":test_mse,
             "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-rot_92]"+idx+".pt")
+            "results/Rot-UM-Mag-[rot_um_mag_92-rot_92]"+idx+".pt")
 
 test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/mag_64/sample_"
 test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
@@ -110,7 +110,7 @@ torch.save({"preds": preds,
             "trues": trues,
             "test_mse":test_mse,
             "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-mag_64]"+idx+".pt")
+            "results/Rot-UM-Mag-[rot_um_mag_92-mag_64]"+idx+".pt")
 
 test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/scale_128/sample_"
 test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
@@ -120,7 +120,7 @@ torch.save({"preds": preds,
             "trues": trues,
             "test_mse":test_mse,
             "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-scale_128]"+idx+".pt")
+            "results/Rot-UM-Mag-[rot_um_mag_92-scale_128]"+idx+".pt")
 
 test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_92/sample_"
 test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
@@ -130,7 +130,7 @@ torch.save({"preds": preds,
             "trues": trues,
             "test_mse":test_mse,
             "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-rot_um_92]"+idx+".pt")
+            "results/Rot-UM-[rot_um_mag_92-rot_um_92]"+idx+".pt")
 
 test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_mag_92/sample_"
 test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
@@ -140,7 +140,7 @@ torch.save({"preds": preds,
             "trues": trues,
             "test_mse":test_mse,
             "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-rot_um_mag_92]"+idx+".pt")
+            "results/Rot-UM-Mag-[rot_um_mag_92-rot_um_mag_92]"+idx+".pt")
 
 test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/scale_rot_um_182/sample_"
 test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
@@ -150,4 +150,4 @@ torch.save({"preds": preds,
             "trues": trues,
             "test_mse":test_mse,
             "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-scale_rot_um_182]"+idx+".pt")
+            "results/Rot-UM-Mag-[rot_um_mag_92-scale_rot_um_182]"+idx+".pt")

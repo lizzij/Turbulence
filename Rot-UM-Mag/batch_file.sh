@@ -6,4 +6,6 @@
 #SBATCH -A m1759
 #SBATCH -q special
 
-srun -N 1 python -u run_model.py
+srun -N 1 python -u run_model.py &
+srun -N 1 python -u run_model1.py &
+wait
