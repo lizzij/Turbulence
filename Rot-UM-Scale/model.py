@@ -1,225 +1,156 @@
-import os
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-import time
-from torch.utils import data
-import warnings
-from train import train_epoch, eval_epoch, test_epoch, Dataset
-
-warnings.filterwarnings("ignore")
+import math
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-# os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,5,6,7"
-basis = torch.load("kernel_basis.pt")
 
-
-def get_lr(optimizer):
-    for param_group in optimizer.param_groups:
-        return param_group['lr']
-
-    
-
-class Ani_layer(nn.Module):
-    def __init__(self, input_channels, output_channels, kernel_size, um_dim = 2, activation = False):
-        super(Ani_layer, self).__init__()
-        self.output_channels = output_channels
-        self.input_channels = input_channels
+class scale_conv2d(nn.Module):
+    def __init__(self, out_channels, in_channels, kernel_size, l = 3, sout = 5, activation = True):
+        super(scale_conv2d, self).__init__()
+        self.out_channels= out_channels
+        self.in_channels = in_channels
+        self.l = l
+        self.sout = sout
         self.activation = activation
         self.kernel_size = kernel_size
-        self.um_dim = um_dim
-        self.radius = (kernel_size - 1)//2
-        self.pad_size = (kernel_size - 1)//2
-        self.num_weights = self.radius*4
-        self.basis = basis[:self.num_weights, :, 15-self.radius:self.radius-15, 15-self.radius:self.radius-15]
-        self.params = self.init_params()  
+        self.bias = nn.Parameter(torch.Tensor(out_channels))
+        weight_shape = (out_channels, l, 2, in_channels//2, kernel_size, kernel_size)
+        self.stdv = math.sqrt(1. / (kernel_size * kernel_size * in_channels * l))
+        self.weights = nn.Parameter(torch.Tensor(*weight_shape))
+        self.reset_parameters()
+        self.batchnorm = nn.BatchNorm3d(sout)# affine=False
         
-        self.bias_term = nn.Parameter(torch.ones(1, self.output_channels, 2, 1, 1)/100)
-        
-        initial_kernel = torch.einsum("abcd, cdefgh -> abcdefgh",  (self.params, self.basis))
-        stds = torch.std(initial_kernel[initial_kernel != 0.0])
-        
-        #print(torch.std(initial_kernel, dim = (0,1,4,5,6,7)))
-        
-        self.scaler = np.sqrt(0.6/(np.sqrt(input_channels) * self.kernel_size**2 * stds))
-        
-        self.params = nn.Parameter(self.params * self.scaler)#.unsqueeze(0).unsqueeze(0).unsqueeze(-1))
-        self.basis = self.basis * self.scaler#.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-        
-        self.b = nn.Parameter(torch.tensor(0.01))
-        
-        self.initial_params = self.params.clone()
-        self.initial_kernel = torch.einsum("abcd, cdefgh -> abefgh",  (self.params, self.basis)).clone()
-        
-    def init_params(self):
-        return torch.randn((self.output_channels, self.input_channels, self.num_weights, 4))
-    
-    
-    def get_kernel(self, params, basis):
-        # Compute Kernel: Kernel shape (output_channels, input_channels, kernel_size, kernel_size, 2, 2) 
-        kernel = torch.einsum("abcd, cdefgh -> abefgh",  (self.params, self.basis.to(device)))
-        
-        # Reshape
-        kernel = kernel.transpose(-2, -3).transpose(-3, -4).transpose(-4, -5)       
-        kernel = kernel.reshape(kernel.shape[0]*2,  kernel.shape[2], self.kernel_size, self.kernel_size, 2)
-        kernel = kernel.transpose(-1, -2).transpose(-2, -3)
-        kernel = kernel.reshape(kernel.shape[0], kernel.shape[1]*2, self.kernel_size, self.kernel_size)
+    def reset_parameters(self):
+        self.weights.data.uniform_(-self.stdv, self.stdv)
+        if self.bias is not None:
+            self.bias.data.fill_(0)
+            
+    def shrink_kernel(self, kernel, up_scale):
+        up_scale = torch.tensor(up_scale).float()
+        pad_in = (torch.ceil(up_scale**2).int())*((kernel.shape[2]-1)//2)
+        pad_h = (torch.ceil(up_scale).int())*((kernel.shape[3]-1)//2)
+        pad_w = (torch.ceil(up_scale).int())*((kernel.shape[4]-1)//2)
+        padded_kernel = F.pad(kernel, (pad_w, pad_w, pad_h, pad_h, pad_in, pad_in))
+        delta = up_scale%1
+        if delta == 0:
+            shrink_factor = 1
+        else:
+            # shrink_factor for coordinates if the kernel is over shrunk.
+            shrink_factor = (((kernel.shape[4]-1))/(padded_kernel.shape[-1]-1)*(up_scale+1))
+            # Adjustment to deal with weird filtering on the grid sample function.
+            shrink_factor = 1.5*(shrink_factor-0.5)**3 + 0.57   
 
-        return kernel
-    
-    def unfold(self, xx):
-        out = F.pad(xx, ((self.pad_size, self.pad_size)*2), mode='replicate')
-        out = F.unfold(out, kernel_size = self.kernel_size)
-        out = out.reshape(out.shape[0], self.input_channels * self.um_dim, self.kernel_size, self.kernel_size, out.shape[-1])
-        out = out.reshape(out.shape[0], self.input_channels * self.um_dim, self.kernel_size, self.kernel_size, xx.shape[-2], xx.shape[-1])
-        return out
-    
-    def subtract_mean(self, xx):
-        out = xx.reshape(xx.shape[0], self.input_channels, self.um_dim, self.kernel_size, self.kernel_size, xx.shape[-2], xx.shape[-1])
-        avgs = out.mean((1,3,4), keepdim=True)
-        out -= avgs
-        out = out.reshape(out.shape[0], self.input_channels * self.um_dim, self.kernel_size, self.kernel_size, xx.shape[-2], xx.shape[-1]).transpose(2,4).transpose(-1,-2)
-        out = out.reshape(out.shape[0], self.input_channels * self.um_dim, xx.shape[-2]*self.kernel_size, xx.shape[-1], self.kernel_size)
-        out = out.reshape(out.shape[0], self.input_channels * self.um_dim, xx.shape[-2]*self.kernel_size, xx.shape[-1]*self.kernel_size)
-        return out, avgs.squeeze(3).squeeze(3)
-    
-    
-    def add_mean(self, out, avgs):
-        out += avgs
-        out = out.reshape(out.shape[0], -1, out.shape[-2], out.shape[-1])
-        return out
-    
-    def forward(self, xx, add_mean = True):       
-        kernel = self.get_kernel(self.params, self.basis)
-        
-        xx = self.unfold(xx)
-        xx, avgs = self.subtract_mean(xx)
+        grid = torch.meshgrid(torch.linspace(-1, 1, kernel.shape[2])*(shrink_factor**2),
+                              torch.linspace(-1, 1, kernel.shape[3])*shrink_factor, 
+                              torch.linspace(-1, 1, kernel.shape[4])*shrink_factor)
 
-        # Conv2d
-        out = F.conv2d(xx, kernel, stride = self.kernel_size) #, bias = self.bias_term
-        out = out.reshape(out.shape[0], out.shape[1]//2, 2, out.shape[-2], out.shape[-1])
-        out += self.bias_term
-        
-        # Activation Function
-        if self.activation:
-            print("***")
-            if self.activation == "sin":
-                norm = torch.sqrt(out[:,:,0,:,:]**2 + out[:,:,1,:,:]**2).unsqueeze(2)
-                out = out*torch.sin(norm)**2/norm
+        grid = torch.cat([grid[2].unsqueeze(0).unsqueeze(-1), 
+                          grid[1].unsqueeze(0).unsqueeze(-1), 
+                          grid[0].unsqueeze(0).unsqueeze(-1)], dim = -1).repeat(kernel.shape[0],1,1,1,1)
 
-            elif self.activation == "relu":
-                norm = torch.sqrt(out[:,:,0,:,:]**2 + out[:,:,1,:,:]**2).unsqueeze(2).repeat(1,1,2,1,1) 
-                out = out/norm
-                norm2 = norm - self.b
-                out[norm2 <= 0.] = 0.    
-
-            elif self.activation == "leakyrelu":
-                norm = torch.sqrt(out[:,:,0,:,:]**2 + out[:,:,1,:,:]**2).unsqueeze(2).repeat(1,1,2,1,1) 
-                out = out/norm
-                norm2 = norm - self.b
-                out[norm2 <= 0.] = out[norm2 <= 0.]*0.1
-
-            elif self.activation == "squash":
-                norm = torch.sqrt(out[:,:,0,:,:]**2 + out[:,:,1,:,:]**2).unsqueeze(2)
-                out = out/norm*(norm**2/(norm**2+1))
-        if add_mean:
-            out = self.add_mean(out, avgs)
-        return out
+        new_kernel = F.grid_sample(padded_kernel, grid.to(device))
+        if kernel.shape[-1] - 2*up_scale > 0:
+            new_kernel = new_kernel * (kernel.shape[-1]**2/((kernel.shape[-1] - 2*up_scale)**2 + 0.01))
+        return new_kernel
     
-class rot_um_cnn(nn.Module):
-    def __init__(self, input_channels, output_channels, hidden_dim, num_layers, kernel_size, activation = False):
-        super(rot_um_cnn, self).__init__()
-        layers = [Ani_layer(input_channels, hidden_dim, kernel_size, activation=activation)] + \
-                 [Ani_layer(hidden_dim, hidden_dim, kernel_size, activation=activation) for i in range(num_layers - 2)] + \
-                 [Ani_layer(hidden_dim, output_channels, kernel_size)]
-        self.layers = nn.Sequential(*layers)
+    def dilate_kernel(self, kernel, dilation):
+        if dilation == 0:
+            return kernel 
 
+        dilation = torch.tensor(dilation).float()
+        delta = dilation%1
+
+        d_in = torch.ceil(dilation**2).int()
+        new_in = kernel.shape[2] + (kernel.shape[2]-1)*d_in
+
+        d_h = torch.ceil(dilation).int()
+        new_h = kernel.shape[3] + (kernel.shape[3]-1)*d_h
+
+        d_w = torch.ceil(dilation).int()
+        new_w = kernel.shape[4] + (kernel.shape[4]-1)*d_h
+
+        new_kernel = torch.zeros(kernel.shape[0], kernel.shape[1], new_in, new_h, new_w)
+        new_kernel[:,:,::(d_in+1),::(d_h+1), ::(d_w+1)] = kernel
+        shrink_factor = 1
+        # shrink coordinates if the kernel is over dilated.
+        if delta != 0:
+            new_kernel = F.pad(new_kernel, ((kernel.shape[4]-1)//2, (kernel.shape[4]-1)//2)*3)
+
+            shrink_factor = (new_kernel.shape[-1] - 1 - (kernel.shape[4]-1)*(delta))/(new_kernel.shape[-1] - 1) 
+            grid = torch.meshgrid(torch.linspace(-1, 1, new_in)*(shrink_factor**2), 
+                                  torch.linspace(-1, 1, new_h)*shrink_factor, 
+                                  torch.linspace(-1, 1, new_w)*shrink_factor)
+
+            grid = torch.cat([grid[2].unsqueeze(0).unsqueeze(-1), 
+                              grid[1].unsqueeze(0).unsqueeze(-1), 
+                              grid[0].unsqueeze(0).unsqueeze(-1)], dim = -1).repeat(kernel.shape[0],1,1,1,1)
+
+            new_kernel = F.grid_sample(new_kernel, grid)         
+            #new_kernel = new_kernel/new_kernel.sum()*kernel.sum()
+        return new_kernel[:,:,-kernel.shape[2]:]
+    
+    
     def forward(self, xx):
-        return self.layers(xx)
+        #print(self.weights.shape, xx.shape)
+        out = []
+        for s in range(self.sout):
+            t = np.minimum(s + self.l, self.sout)
+            inp = xx[:,s:t].reshape(xx.shape[0], -1, xx.shape[-2], xx.shape[-1])
+            w = self.weights[:,:(t-s),:,:,:].reshape(self.out_channels, 2*(t-s), self.in_channels//2, self.kernel_size, self.kernel_size).to(device)
+            
+            if (s - self.sout//2) < 0:
+                new_kernel = self.shrink_kernel(w, (self.sout//2 - s)/2).to(device)
+            elif (s - self.sout//2) > 0:
+                new_kernel = self.dilate_kernel(w, (s - self.sout//2)/2).to(device)
+            else:
+                new_kernel = w.to(device)
+    
+            new_kernel = new_kernel.reshape(self.out_channels, (t-s)*self.in_channels, new_kernel.shape[-2], new_kernel.shape[-1])
+            conv = F.conv2d(inp, new_kernel, padding = ((new_kernel.shape[-2]-1)//2, (new_kernel.shape[-1]-1)//2))# bias = self.bias,
+                 
+            out.append(conv.unsqueeze(1))
 
+        out = torch.cat(out, dim = 1) 
+        #print(out.shape)
+        if self.activation: 
+            #out = self.batchnorm(out)
+            out = F.leaky_relu(out)
+        
+        return out 
+    
+    
+class Resblock(nn.Module):
+    def __init__(self, in_channels, hidden_dim, kernel_size, skip = True):
+        super(Resblock, self).__init__()
+        self.layer1 = scale_conv2d(out_channels = hidden_dim, in_channels = in_channels, kernel_size = kernel_size)
+     
+        self.layer2 = scale_conv2d(out_channels = hidden_dim, in_channels = hidden_dim, kernel_size = kernel_size) 
+        
+        self.skip = skip
+        
+    def forward(self, x):
+        out = self.layer1(x)
+        if self.skip:
+            out = self.layer2(out) + x
+        else:
+            out = self.layer2(out)
+        return out
 
-"""
-train_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/data_64/sample_"
-test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/data_64/sample_"
-kernel_size = 3
-num_layers = 2
-hidden_dim = 128
-learning_rate = 1e-05
-output_length = 3
-batch_size = 1
-input_length = 20
-train_indices = list(range(0, 6000))
-valid_indices = list(range(6000, 8000))
-test_indices = list(range(8000, 9870))
-
-# train_indices = list(range(0, 600))
-# valid_indices = list(range(600, 800))
-# test_indices = list(range(8000, 8200))
-
-# train_indices = list(range(0, 60))
-# valid_indices = list(range(60, 80))
-# test_indices = list(range(8000, 8020))
-
-# train_indices = list(range(0, 6))
-# valid_indices = list(range(6, 8))
-# test_indices = list(range(8000, 8002))
-
-# train_indices = list(range(8000, 8006))
-# valid_indices = list(range(8006, 8008))
-# test_indices = list(range(8008, 8010))
-
-
-train_set = Dataset(train_indices, input_length, 40, output_length, train_direc, True)
-valid_set = Dataset(valid_indices, input_length, 40, 6, train_direc, True)
-train_loader = data.DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=8)
-valid_loader = data.DataLoader(valid_set, batch_size=batch_size, shuffle=False, num_workers=8)
-
-print("Initializing...")
-model = rot_um_cnn(activation = "relu", input_channels = input_length, hidden_dim = hidden_dim, num_layers = num_layers, output_channels = 1, kernel_size = kernel_size).to(device)
-print("Done")
-
-optimizer = torch.optim.Adam(model.parameters(), learning_rate,betas=(0.9, 0.999), weight_decay=4e-4)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
-loss_fun = torch.nn.MSELoss()
-
-train_mse = []
-valid_mse = []
-test_mse = []
-
-min_mse = 10
-for i in range(30):
-    start = time.time()
-    scheduler.step()
-
-    model.train()
-    train_mse.append(train_epoch(train_loader, model, optimizer, loss_fun))
-    model.eval()
-    mse, _, _ = eval_epoch(valid_loader, model, loss_fun)
-    valid_mse.append(mse)
-
-    if valid_mse[-1] < min_mse:
-        min_mse = valid_mse[-1] 
-        best_model = model
-        torch.save(model, "model.pth")
-    end = time.time()
-    if len(train_mse) > 30 and np.mean(valid_mse[-5:]) >= np.mean(valid_mse[-10:-5]):
-        break
-    print(train_mse[-1], valid_mse[-1], round((end-start)/60,5), format(get_lr(optimizer), "5.2e"))
-
-print("*******", input_length, min_mse, "*******")
-
-
-best_model = torch.load("model.pth")
-loss_fun = torch.nn.MSELoss()
-test_set = Dataset(test_indices, input_length, 40, 60, test_direc, True)
-test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 16)
-valid_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
-
-torch.save({"preds": preds[:7],
-            "trues": trues[:7],
-            "loss_curve": loss_curve,
-            "train_loss": train_mse,
-            "valid_loss": valid_mse},
-           "results.pt")
-"""
+class ResNet(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size):
+        super(ResNet, self).__init__()
+        self.input_layer = scale_conv2d(out_channels = 32, in_channels = in_channels, kernel_size = kernel_size)        
+        layers = [self.input_layer]
+        layers += [Resblock(32, 32, kernel_size, True), Resblock(32, 32, kernel_size, True)]
+        layers += [Resblock(32, 64, kernel_size, False), Resblock(64, 64, kernel_size, True), Resblock(64, 64, kernel_size, True)]
+        layers += [Resblock(64, 128, kernel_size, False), Resblock(128, 128, kernel_size, True)]
+        layers += [scale_conv2d(out_channels = 2, in_channels = 128, kernel_size = kernel_size, sout = 1, activation = False)]
+        self.model = nn.Sequential(*layers)
+        
+    def forward(self, xx):
+        out = self.model(xx)
+        out = out.squeeze(1)
+        return out
+    
+    

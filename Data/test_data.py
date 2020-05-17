@@ -52,7 +52,7 @@ for i in range(9870):
     #break
     torch.save(rot_img_padded, "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_64/sample_" + str(i) + ".pt")
 
-# UM ===============================================================================
+# Rot + UM ===============================================================================
 def sample_within_spherical():
     t = 2 * np.pi * np.random.uniform()
     u = np.random.uniform() + np.random.uniform()
@@ -71,9 +71,9 @@ for i in range(9870):
     img = torch.load(direc + str(i) + ".pt")#+(torch.rand(1, 2, 1, 1)*4-2
     rot_um_img = torch.cat([uniform_motion(img, um_vector) for j in range(img.shape[0])], dim = 0)
     #break
-    torch.save(rot_um_img, "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_64/sample_" + str(i) + ".pt")
+    torch.save(rot_um_img, "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_64/sample_" + str(i) + ".pt"
 
-# magnitude ============================================================================
+# Rot + UM + Mag ============================================================================
 def magnitude(img, scalar):
     return img * scalar
 
@@ -99,6 +99,13 @@ for i in tqdm(range(9870)):
 
 # scale + Rot + UM =====================================================================
 direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/scale_64/sample_"
+def pad_after_scale(scale_im, target_dim=128):
+    dim_diff = target_dim - scale_im.shape[-1]
+    padding_left = padding_top = dim_diff // 2
+    padding_right = padding_bottom = dim_diff - dim_diff // 2
+    paddings = (padding_left,padding_right, padding_top, padding_bottom)
+    return F.pad(scale_im, paddings, 'constant', 0)
+               
 for i in tqdm(range(9870)):
     scale_img = torch.load(direc + str(i) + ".pt")
 
