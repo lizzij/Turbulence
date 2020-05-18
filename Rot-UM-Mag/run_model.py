@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils import data
 import torch.nn.functional as F
-from model import rot_um_cnn
+from model import rot_um_mag_cnn
 from train import train_epoch, eval_epoch, test_epoch, Dataset, get_lr
 # os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 # os.environ["CUDA_VISIBLE_DEVICES"]="0,1,2,3,4,5,6,7"
@@ -32,7 +32,7 @@ train_loader = data.DataLoader(train_set, batch_size = batch_size, shuffle = Tru
 valid_loader = data.DataLoader(valid_set, batch_size = batch_size, shuffle = False, num_workers = 8)
 
 print("Initializing...")
-model = rot_um_cnn(activation = "relu", input_channels = input_length, hidden_dim = hidden_dim, num_layers = num_layers, output_channels = 1, kernel_size = kernel_size).to(device)
+model = rot_um_mag_cnn(activation = "relu", input_channels = input_length, hidden_dim = hidden_dim, num_layers = num_layers, output_channels = 1, kernel_size = kernel_size).to(device)
 print("Done")
 
 optimizer = torch.optim.Adam(model.parameters(), learning_rate,betas=(0.9, 0.999), weight_decay=4e-4)

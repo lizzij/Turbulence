@@ -53,7 +53,7 @@ def blur_input(xx):
         if s > 0:
             blur = gaussain_blur(size = np.ceil(s), sigma = [s**2, s, s], dim  = 3, channels = 1).to(device)
             out.append(blur(xx).unsqueeze(1)*(s+1))
-        elif s<0: # upsample
+        elif s<0:
             out.append(xx.unsqueeze(1)*(1/(np.abs(s)+1)))
         else:
             out.append(xx.unsqueeze(1))
@@ -91,7 +91,6 @@ def train_epoch(train_loader, model, optimizer, loss_function):
         for i in range(yy.shape[2]):
             blur_xx = blur_input(xx)
             im = model(blur_xx)
-            #print(xx.shape, blur_xx.shape, im.shape)
             #print(xx.shape, im.shape, yy.shape)
             xx = torch.cat([xx[:, :, 1:], im.unsqueeze(2)], 2)
             #print(xx[:, :, 1:].shape, im.unsqueeze(2).shape)

@@ -45,72 +45,72 @@ valid_mse = []
 test_mse = []
 
 # load from saved
-model = torch.load("results/Rot-UM-[data_64]1.pth").to(device)
+model = torch.load("results/Rot-UM-[rot_um_92]1.pth").to(device)
 best_model = model
 
-# train model
-for i in range(100):
-    start = time.time()
-    scheduler.step()
+# # train model
+# for i in range(100):
+#     start = time.time()
+#     scheduler.step()
 
-    model.train()
-    train_mse.append(train_epoch(train_loader, model, optimizer, loss_fun))
-    model.eval()
-    mse, _, _ = eval_epoch(valid_loader, model, loss_fun)
-    valid_mse.append(mse)
+#     model.train()
+#     train_mse.append(train_epoch(train_loader, model, optimizer, loss_fun))
+#     model.eval()
+#     mse, _, _ = eval_epoch(valid_loader, model, loss_fun)
+#     valid_mse.append(mse)
 
-    if valid_mse[-1] < min_mse:
-        min_mse = valid_mse[-1] 
-        best_model = model
-        torch.save(model, "results/Rot-UM-[data_64]"+idx+".pth")
-    end = time.time()
-    if (len(train_mse) > 50 and np.mean(valid_mse[-5:]) >= np.mean(valid_mse[-10:-5])):
-            break
-    print(i+1,train_mse[-1], valid_mse[-1], round((end-start)/60,5), format(get_lr(optimizer), "5.2e"), idx)
+#     if valid_mse[-1] < min_mse:
+#         min_mse = valid_mse[-1] 
+#         best_model = model
+#         torch.save(model, "results/Rot-UM-[data_64]"+idx+".pth")
+#     end = time.time()
+#     if (len(train_mse) > 50 and np.mean(valid_mse[-5:]) >= np.mean(valid_mse[-10:-5])):
+#             break
+#     print(i+1,train_mse[-1], valid_mse[-1], round((end-start)/60,5), format(get_lr(optimizer), "5.2e"), idx)
 
 
 print('\n-------------test_mse-------------')
 
-test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/data_64/sample_"
-loss_fun = torch.nn.MSELoss()
-test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
-test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
-test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
-torch.save({"preds": preds,
-            "trues": trues,
-            "test_mse":test_mse,
-            "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-data_64]"+idx+".pt")
+# test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/data_64/sample_"
+# loss_fun = torch.nn.MSELoss()
+# test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
+# test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
+# test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
+# torch.save({"preds": preds,
+#             "trues": trues,
+#             "test_mse":test_mse,
+#             "loss_curve": loss_curve}, 
+#             "results/Rot-UM-[data_64-data_64]"+idx+".pt")
 
-test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/um_64/sample_"
-test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
-test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
-test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
-torch.save({"preds": preds,
-            "trues": trues,
-            "test_mse":test_mse,
-            "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-um_64]"+idx+".pt")
+# test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/um_64/sample_"
+# test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
+# test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
+# test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
+# torch.save({"preds": preds,
+#             "trues": trues,
+#             "test_mse":test_mse,
+#             "loss_curve": loss_curve}, 
+#             "results/Rot-UM-[data_64-um_64]"+idx+".pt")
 
-test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_92/sample_"
-test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
-test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
-test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
-torch.save({"preds": preds,
-            "trues": trues,
-            "test_mse":test_mse,
-            "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-rot_92]"+idx+".pt")
+# test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_92/sample_"
+# test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
+# test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
+# test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
+# torch.save({"preds": preds,
+#             "trues": trues,
+#             "test_mse":test_mse,
+#             "loss_curve": loss_curve}, 
+#             "results/Rot-UM-[data_64-rot_92]"+idx+".pt")
 
-test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/mag_64/sample_"
-test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
-test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
-test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
-torch.save({"preds": preds,
-            "trues": trues,
-            "test_mse":test_mse,
-            "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-mag_64]"+idx+".pt")
+# test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/mag_64/sample_"
+# test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
+# test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
+# test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
+# torch.save({"preds": preds,
+#             "trues": trues,
+#             "test_mse":test_mse,
+#             "loss_curve": loss_curve}, 
+#             "results/Rot-UM-[data_64-mag_64]"+idx+".pt")
 
 test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/scale_128/sample_"
 test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
@@ -122,32 +122,32 @@ torch.save({"preds": preds,
             "loss_curve": loss_curve}, 
             "results/Rot-UM-[data_64-scale_128]"+idx+".pt")
 
-test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_92/sample_"
-test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
-test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
-test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
-torch.save({"preds": preds,
-            "trues": trues,
-            "test_mse":test_mse,
-            "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-rot_um_92]"+idx+".pt")
+# test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_92/sample_"
+# test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
+# test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
+# test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
+# torch.save({"preds": preds,
+#             "trues": trues,
+#             "test_mse":test_mse,
+#             "loss_curve": loss_curve}, 
+#             "results/Rot-UM-[data_64-rot_um_92]"+idx+".pt")
 
-test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_mag_92/sample_"
-test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
-test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
-test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
-torch.save({"preds": preds,
-            "trues": trues,
-            "test_mse":test_mse,
-            "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-rot_um_mag_92]"+idx+".pt")
+# test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/rot_um_mag_92/sample_"
+# test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
+# test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
+# test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
+# torch.save({"preds": preds,
+#             "trues": trues,
+#             "test_mse":test_mse,
+#             "loss_curve": loss_curve}, 
+#             "results/Rot-UM-[data_64-rot_um_mag_92]"+idx+".pt")
 
-test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/scale_rot_um_182/sample_"
-test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
-test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
-test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
-torch.save({"preds": preds,
-            "trues": trues,
-            "test_mse":test_mse,
-            "loss_curve": loss_curve}, 
-            "results/Rot-UM-[data_64-scale_rot_um_182]"+idx+".pt")
+# test_direc = "/global/cscratch1/sd/roseyu/Eliza/TF-net/Data/scale_rot_um_182/sample_"
+# test_set = Dataset(test_indices, input_length, 40, 10, test_direc, True)
+# test_loader = data.DataLoader(test_set, batch_size = batch_size, shuffle = False, num_workers = 8)
+# test_mse, preds, trues, loss_curve = test_epoch(test_loader, best_model, loss_fun)
+# torch.save({"preds": preds,
+#             "trues": trues,
+#             "test_mse":test_mse,
+#             "loss_curve": loss_curve}, 
+#             "results/Rot-UM-[data_64-scale_rot_um_182]"+idx+".pt")
